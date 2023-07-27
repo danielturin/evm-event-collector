@@ -1,4 +1,4 @@
-package controller
+package controllers
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ import (
 )
 
 type Controller interface {
-	Preprocess(e reactor.Event[types.LogEvent], err error)
+	Preprocess(e types.LogEvent, contractAbi abi.ABI) *types.Callback
 	Process(c types.Callback)
 }
 
@@ -53,7 +53,7 @@ func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent
 		}, 1, func(e types.LogEvent, callback func(types.Callback, error)) {
 			go func(e types.LogEvent) {
 				fmt.Printf("EventHandler triggered: %s\n", e.Log.Address)
-				cb1 := Preprocess(e, contractAbi)
+				cb1 := ctrl.Preprocess(e, contractAbi)
 				if cb1 != nil {
 					cb := *cb1
 					fmt.Printf("Preprocess completed\n")
@@ -81,7 +81,7 @@ func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent
 	return ctrl
 }
 
-func Preprocess(e types.LogEvent, contractAbi abi.ABI) *types.Callback {
+func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types.Callback {
 	fmt.Println("Preprocess: handling event")
 	ev, err := contractAbi.EventByID(e.Log.Topics[0])
 	if ev.Name == "Transfer" {

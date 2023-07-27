@@ -8,7 +8,6 @@ import (
 
 	"github.com/amirylm/lockfree/reactor"
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -23,7 +22,7 @@ type Filter struct {
 
 type Subscriber interface {
 	Connect(ctx context.Context, addr string, timeout time.Duration) error
-	Subscribe(ctx context.Context, contractAbi abi.ABI, reactor reactor.Reactor[types.LogEvent, types.Callback], contractData types.ContractData) error
+	Subscribe(ctx context.Context, reactor reactor.Reactor[types.LogEvent, types.Callback], contractData types.ContractData) error
 }
 
 func New(addr string, timeout time.Duration) *subscriber {

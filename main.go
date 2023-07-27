@@ -3,8 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	controller "evm-event-collector/controllers"
-	subscriber "evm-event-collector/subscriber"
+	client "evm-event-collector/client"
 	"evm-event-collector/types"
 	"fmt"
 	"io"
@@ -61,14 +60,12 @@ func main() {
 	}
 	timeout := time.Duration(timeoutInt64) * time.Millisecond
 
-	sub := subscriber.New(addr.(string), timeout)
-	controller.New(contractData, reactor)
-
-	err = sub.Connect(ctx, addr.(string), timeout)
+	c := client.New(addr.(string), timeout, reactor, contractData)
+	c.Subscriber.Connect(ctx, addr.(string), timeout)
 	if err != nil {
 		fmt.Println("failed to connect!")
 	}
 
 	fmt.Println("Calling Subscribe")
-	sub.Subscribe(ctx, reactor, contractData)
+	c.Subscriber.Subscribe(ctx, reactor, contractData)
 }
