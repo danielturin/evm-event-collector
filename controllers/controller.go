@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"evm-event-collector/types"
 	"fmt"
@@ -18,6 +20,7 @@ import (
 type Controller interface {
 	Preprocess(e types.LogEvent, contractAbi abi.ABI) *types.Callback
 	Process(c types.Callback)
+	Start(contractDate types.ContractData)
 }
 
 type controller struct {
@@ -33,7 +36,11 @@ func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent
 		contractData: contractData,
 		mutext:       &sync.Mutex{},
 	}
-	fmt.Printf("Iterating over events: %+v", contractData.Events)
+	return ctrl
+}
+
+func (ctrl *controller) Start(contractData types.ContractData) {
+	fmt.Printf("Iterating over events: %+v\n", contractData.Events)
 	for _, event := range contractData.Events {
 		eventAbi := ""
 		for _, abi := range contractData.ABI {
@@ -42,18 +49,30 @@ func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent
 			}
 		}
 		contractAbi, _ := abi.JSON(bytes.NewReader([]byte(eventAbi)))
-		identifier := fmt.Sprintf("%s:%s", event.Addr, event.EventSig)
+
+		randomBytes := make([]byte, 32)
+		_, err := rand.Read(randomBytes)
+		if err != nil {
+			fmt.Println("Could not generate random bytes")
+		}
+
+		hasher := sha256.New()
+		hasher.Write(randomBytes)
+		hash := hasher.Sum(nil)
+
+		identifier := hex.EncodeToString(hash)
+		// identifier := fmt.Sprintf("%s:%s", event.Addr, event.EventSig)
 		fmt.Printf("Identifier is: %s\n", identifier)
 
-		fmt.Println("Adding Handler...")
-		ctrl.reactor.AddHandler(identifier, func(e types.LogEvent) bool {
-			v := len(e.ID) > 0 && strings.EqualFold(e.Log.Address.String(), event.Addr)
-			fmt.Printf("INSIDE Handler Selector Bool value is: %+v\n", v)
-			return v
-		}, 1, func(e types.LogEvent, callback func(types.Callback, error)) {
-			go func(e types.LogEvent) {
-				fmt.Printf("EventHandler triggered: %s\n", e.Log.Address)
-				cb1 := ctrl.Preprocess(e, contractAbi)
+		rs := &ReactiveServiceImpl{
+			SelectLogic: func(e reactor.Event[types.LogEvent]) bool {
+				v := len(e.Data.ID) > 0 && strings.EqualFold(e.Data.Log.Address.String(), event.Addr)
+				fmt.Printf("INSIDE Handler Selector Bool value is: %+v\n", v)
+				return v
+			},
+			HandleLogic: func(e reactor.Event[types.LogEvent], callback func(types.Callback, error)) {
+				fmt.Printf("EventHandler triggered: %s\n", e.Data.Log.Address)
+				cb1 := ctrl.Preprocess(e.Data, contractAbi)
 				if cb1 != nil {
 					cb := *cb1
 					fmt.Printf("Preprocess completed\n")
@@ -61,24 +80,29 @@ func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent
 					fmt.Printf("Callback EventSigId: %s\n", cb.EventSigId)
 					callback(*cb1, nil)
 				}
-			}(e)
-		})
+			},
+		}
+
+		cs := &CallbackServiceImpl{
+			SelectLogic: func(c reactor.Event[types.Callback]) bool {
+				fmt.Printf("INSIDE: Callback Selector before running selector\n")
+				v := len(c.Data.Addr) > 0 && strings.EqualFold(c.Data.Addr.String(), event.Addr) &&
+					strings.EqualFold(c.Data.EventSigId.String(), event.EventSig)
+				fmt.Printf("INSIDE: Callback Selector Bool values is: %v\n", v)
+				return v
+			},
+			HandleLogic: func(c reactor.Event[types.Callback]) {
+				fmt.Printf("Callback Process triggered for %s\n", c.Data.TxHash.String())
+				ctrl.Process(c.Data)
+			},
+		}
 
 		fmt.Printf("Adding Callback for %s\n", identifier)
-		ctrl.reactor.AddCallback(identifier, func(c types.Callback) bool {
-			v := len(c.Addr) > 0 && strings.EqualFold(c.Addr.String(), event.Addr) &&
-				strings.EqualFold(c.EventSigId.String(), event.EventSig)
-			fmt.Printf("INSIDE: Callback Selector Bool values is: %v\n", v)
-			return v
-		}, 1, func(c types.Callback) {
-			go func(c types.Callback) {
-				fmt.Printf("Callback Process triggered for %s\n", c.TxHash.String())
-				ctrl.Process(c)
-			}(c)
+		ctrl.reactor.AddCallback(identifier, cs, 1)
 
-		})
+		fmt.Println("Adding Handler...")
+		ctrl.reactor.AddHandler(identifier, rs, 1)
 	}
-	return ctrl
 }
 
 func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types.Callback {
@@ -179,4 +203,34 @@ func (ctrl *controller) Process(c types.Callback) {
 	fmt.Println("Line appended to existing file.")
 	ctrl.mutext.Unlock()
 	fmt.Println("Unlocked mutex")
+}
+
+type ReactiveServiceImpl struct {
+	SelectLogic func(event reactor.Event[types.LogEvent]) bool
+	HandleLogic func(event reactor.Event[types.LogEvent], callback func(types.Callback, error))
+}
+
+func (rs *ReactiveServiceImpl) Select(event reactor.Event[types.LogEvent]) bool {
+	// Call the logic function for Select with the event as an argument
+	return rs.SelectLogic(event)
+}
+
+func (rs *ReactiveServiceImpl) Handle(event reactor.Event[types.LogEvent], callback func(types.Callback, error)) {
+	// Call the logic function for Handle with the event and callback as arguments
+	rs.HandleLogic(event, callback)
+}
+
+type CallbackServiceImpl struct {
+	SelectLogic func(event reactor.Event[types.Callback]) bool
+	HandleLogic func(callback reactor.Event[types.Callback])
+}
+
+func (cs *CallbackServiceImpl) Select(event reactor.Event[types.Callback]) bool {
+	// Call the logic function for Select with the event as an argument
+	return cs.SelectLogic(event)
+}
+
+func (cs *CallbackServiceImpl) Handle(callback reactor.Event[types.Callback]) {
+	// Call the logic function for Handle with the event and callback as arguments
+	cs.HandleLogic(callback)
 }

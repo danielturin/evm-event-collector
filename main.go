@@ -65,6 +65,7 @@ func main() {
 	if err != nil {
 		fmt.Println("failed to connect!")
 	}
+	c.Controller.Start(contractData)
 
 	fmt.Println("Calling Subscribe")
 	c.Subscriber.Subscribe(ctx, reactor, contractData)

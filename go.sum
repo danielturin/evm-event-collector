@@ -52,6 +52,12 @@ github.com/amirylm/lockfree v0.0.3-0.20230720084513-23b21cd4fd88 h1:QVxN66wJhppJ
 github.com/amirylm/lockfree v0.0.3-0.20230720084513-23b21cd4fd88/go.mod h1:92tGIqOCCQdd9SR5nGLYwK4GN9PTKlQmRwXKxqfVz/U=
 github.com/amirylm/lockfree v0.0.3-0.20230723130153-f7d97832f5c9 h1:qEgsRc5iGb2pbcGfWQNxEFxtUhCJGoHozVnDl9HpBQg=
 github.com/amirylm/lockfree v0.0.3-0.20230723130153-f7d97832f5c9/go.mod h1:92tGIqOCCQdd9SR5nGLYwK4GN9PTKlQmRwXKxqfVz/U=
+github.com/amirylm/lockfree v0.0.3-0.20230728091139-92101b58f2fb h1:Xf9+jiBae3JfBc5IcYpUkPZqLz0wSM0JRrS0ObYHj1A=
+github.com/amirylm/lockfree v0.0.3-0.20230728091139-92101b58f2fb/go.mod h1:92tGIqOCCQdd9SR5nGLYwK4GN9PTKlQmRwXKxqfVz/U=
+github.com/amirylm/lockfree v0.0.3-0.20230730062429-88c1883dfbda h1:bsLLA/tZswnXr6WN0X8AYVhKdLbf8+aYzqyY49n4aiA=
+github.com/amirylm/lockfree v0.0.3-0.20230730062429-88c1883dfbda/go.mod h1:92tGIqOCCQdd9SR5nGLYwK4GN9PTKlQmRwXKxqfVz/U=
+github.com/amirylm/lockfree v0.0.3-0.20230730090316-f78fded4bd21 h1:2Ymv+Tad+2THBHoMxIEYXHb/l/I5ERQWxoMi720zVP0=
+github.com/amirylm/lockfree v0.0.3-0.20230730090316-f78fded4bd21/go.mod h1:92tGIqOCCQdd9SR5nGLYwK4GN9PTKlQmRwXKxqfVz/U=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/btcsuite/btcd/btcec/v2 v2.2.0 h1:fzn1qaOt32TuLjFlkzYSsBC35Q3KUjT1SwPxiMSCF5k=
 github.com/btcsuite/btcd/btcec/v2 v2.2.0/go.mod h1:U7MHm051Al6XmscBQ0BoNydpOTsFAn707034b5nY8zU=
