@@ -61,7 +61,6 @@ func (ctrl *controller) Start(contractData types.ContractData) {
 		hash := hasher.Sum(nil)
 
 		identifier := hex.EncodeToString(hash)
-		// identifier := fmt.Sprintf("%s:%s", event.Addr, event.EventSig)
 		fmt.Printf("Identifier is: %s\n", identifier)
 
 		rs := &ReactiveServiceImpl{
@@ -98,10 +97,10 @@ func (ctrl *controller) Start(contractData types.ContractData) {
 		}
 
 		fmt.Printf("Adding Callback for %s\n", identifier)
-		ctrl.reactor.AddCallback(identifier, cs, 1)
+		ctrl.reactor.AddCallback(identifier+"_callback", cs, 1)
 
-		fmt.Println("Adding Handler...")
-		ctrl.reactor.AddHandler(identifier, rs, 1)
+		fmt.Printf("Adding Handler for %s\n", identifier)
+		ctrl.reactor.AddHandler(identifier+"_handler", rs, 1)
 	}
 }
 
@@ -145,9 +144,11 @@ func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types
 		}
 
 		amount, err := contractAbi.Unpack("Transfer", e.Log.Data)
-		fmt.Printf("AMOUNT IS: %d\n", amount[0])
 		if err == nil {
-			cb.Amount = amount[0].(*big.Int)
+			bi_amount := amount[0].(*big.Int)
+			divisor := big.NewInt(1000000)
+			result := new(big.Float).Quo(new(big.Float).SetInt(bi_amount), new(big.Float).SetInt(divisor))
+			cb.Amount = *result
 		} else {
 			fmt.Printf("error unpacking transfer amount: %s\n", err)
 		}
@@ -191,7 +192,7 @@ func (ctrl *controller) Process(c types.Callback) {
 	fmt.Fprintf(file, "EventSigId: %s\n", hex.EncodeToString(c.EventSigId[:]))
 	fmt.Fprintf(file, "From: %s\n", hex.EncodeToString(c.From[:]))
 	fmt.Fprintf(file, "To: %s\n", hex.EncodeToString(c.To[:]))
-	fmt.Fprintf(file, "Amount: %d\n", c.Amount)
+	fmt.Fprintf(file, "Amount: %s\n", c.Amount.Text('f', 10))
 	fmt.Fprintf(file, "TxHash: %s\n", hex.EncodeToString(c.TxHash[:]))
 	fmt.Fprintf(file, "Addr: %s\n", hex.EncodeToString(c.Addr[:]))
 	fmt.Fprintf(file, "BlockHash: %s\n", hex.EncodeToString(c.BlockHash[:]))

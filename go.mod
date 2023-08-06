@@ -3,7 +3,7 @@ module evm-event-collector
 go 1.20
 
 require (
-	github.com/amirylm/lockfree v0.0.3-0.20230730090316-f78fded4bd21
+	github.com/amirylm/lockfree v0.0.3-0.20230803063950-a5e891b440b9
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/pkg/errors v0.9.1
 	github.com/shurcooL/graphql v0.0.0-20230714182844-3e04114ae69a
