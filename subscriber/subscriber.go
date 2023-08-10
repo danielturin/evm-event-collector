@@ -2,8 +2,8 @@ package subscriber
 
 import (
 	"context"
+	logger "evm-event-collector/logger"
 	"evm-event-collector/types"
-	"fmt"
 	"time"
 
 	"github.com/amirylm/lockfree/reactor"
@@ -26,11 +26,14 @@ type Subscriber interface {
 }
 
 func New(addr string, timeout time.Duration) *subscriber {
-	return &subscriber{}
+	return &subscriber{
+		log: logger.GetNamedLogger("subscriber"),
+	}
 }
 
 type subscriber struct {
 	conn *ethclient.Client
+	log  *logger.Log
 }
 
 func (s *subscriber) Connect(pctx context.Context, addr string, timeout time.Duration) error {
@@ -43,11 +46,11 @@ func (s *subscriber) Connect(pctx context.Context, addr string, timeout time.Dur
 }
 
 func (s *subscriber) connect(pctx context.Context, addr string, timeout time.Duration) (*ethclient.Client, error) {
-	fmt.Printf("Establishing connection to %s\n", addr)
+	s.log.Logger.Sugar().Info("Establishing connection to ", addr)
 	conn, err := ethclient.DialContext(pctx, addr)
 
 	if err != nil {
-		fmt.Printf("Connceetion Failure: %+v\n", err)
+		s.log.Logger.Sugar().Error("Connceetion Failure: ", err)
 		return nil, errors.Wrap(err, "connection failure")
 	}
 	return conn, nil
@@ -58,35 +61,35 @@ func (s *subscriber) Subscribe(ctx context.Context, reactor reactor.Reactor[type
 
 	filtersQuery := ethereum.FilterQuery{}
 	genFiltersQuery(&filtersQuery, contractData)
-	fmt.Println("Subscribing to Filter Logs")
+	s.log.Logger.Info("Subscribing to Filter Logs")
 	sub, err := s.conn.SubscribeFilterLogs(ctx, filtersQuery, logs)
 	if err != nil {
-		fmt.Printf("failed to SubscribeFilterLogs %s", err)
+		s.log.Logger.Sugar().Error("failed to SubscribeFilterLogs ", err)
 		return nil
 	}
 	defer sub.Unsubscribe()
 	go s.listen(sub, logs, reactor, contractData)
 	select {
 	case <-ctx.Done():
-		fmt.Println("Context terminated")
+		s.log.Logger.Info("Context terminated")
 	case err := <-sub.Err():
-		fmt.Printf("Context error: %s\n", err)
+		s.log.Logger.Sugar().Error("Context error: ", err)
 	}
 
 	return nil
 }
 
 func (s *subscriber) listen(sub ethereum.Subscription, logs chan gethtypes.Log, reactor reactor.Reactor[types.LogEvent, types.Callback], contractData types.ContractData) {
-	fmt.Println("Listening for Events")
+	s.log.Logger.Info("Listening for Events")
 	for {
-		fmt.Println("Waiting for channel input")
+		s.log.Logger.Info("Waiting for channel input")
 		select {
 		case log := <-logs:
-			fmt.Printf("Received Log for Transaction: %+v\n", log.TxHash)
+			s.log.Logger.Sugar().Info("Received Log for Transaction: ", log.TxHash)
 			go s.processEvent(log, reactor)
 
 		case err := <-sub.Err():
-			fmt.Println("Error in listens")
+			s.log.Logger.Sugar().Error("Failed while listening: ", err)
 			errors.Wrap(err, "retrieving log from subscription failed")
 		}
 	}
@@ -94,15 +97,13 @@ func (s *subscriber) listen(sub ethereum.Subscription, logs chan gethtypes.Log, 
 
 func genFiltersQuery(filters *ethereum.FilterQuery, contractData types.ContractData) {
 	for _, eventData := range contractData.Events {
-		fmt.Printf("gethFiltersQuery: creating filter %s'\n", eventData)
 		filters.Addresses = append(filters.Addresses, common.HexToAddress(eventData.Addr))
 	}
-	fmt.Printf("gethFiltersQuery: %s'\n", filters)
 }
 
 func (s *subscriber) processEvent(log gethtypes.Log, reactor reactor.Reactor[types.LogEvent, types.Callback]) {
 	id := log.Address.String()
 	e := types.LogEvent{Log: log, ID: id}
-	fmt.Printf("processEvent: enqueuing event for TxHash - %+v\n", e.Log.TxHash)
+	s.log.Logger.Sugar().Info("processEvent: enqueuing event for TxHash - ", e.Log.TxHash)
 	reactor.Enqueue(e)
 }
