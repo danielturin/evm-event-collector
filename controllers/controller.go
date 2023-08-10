@@ -16,7 +16,6 @@ import (
 	"github.com/amirylm/lockfree/reactor"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"go.uber.org/zap"
 )
 
 type Controller interface {
@@ -176,7 +175,7 @@ func (ctrl *controller) Process(c types.Callback) {
 	}
 
 	defer file.Close()
-	ctrl.log.Logger.Info("Process: Writing to File ", zap.String("TxHash", hex.EncodeToString(c.TxHash[:])))
+	ctrl.log.Logger.Sugar().Info("Process: Writing to File transaction:  ", hex.EncodeToString(c.TxHash[:]))
 	fmt.Fprintf(file, "EventName: %s\n", c.EventName)
 	fmt.Fprintf(file, "EventSig: %s\n", c.EventSig)
 	fmt.Fprintf(file, "EventSigId: %s\n", hex.EncodeToString(c.EventSigId[:]))
