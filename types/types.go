@@ -33,7 +33,7 @@ type Callback struct {
 	EventSig    string
 	EventSigId  common.Hash
 	From, To    common.Address
-	Amount      *big.Int
+	Amount      big.Float
 	TxHash      common.Hash
 	Addr        common.Address
 	BlockHash   common.Hash

@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	client "evm-event-collector/client"
+	"evm-event-collector/logger"
 	"evm-event-collector/types"
-	"fmt"
 	"io"
 	"os"
 	"time"
@@ -15,18 +15,23 @@ import (
 )
 
 func main() {
+	logger.CreateLoggerInstance()
+	log := logger.GetNamedLogger("main").Logger
+
+	defer logger.Sync()
 	viper.SetConfigFile(".env")
 	viper.ReadInConfig()
 	addr := viper.Get("SOCKET_ADDRS")
 	timeout_env := viper.Get("TIMEOUT_DURATION")
 
 	if len(addr.(string)) == 0 {
-		fmt.Println("Please enter a valid websocket SOCKET_ADDRS in .env")
+		log.Error("Please enter a valid websocket SOCKET_ADDRS in .env")
 		return
 	}
 
 	contract_config, err := os.Open("config.json")
 	if err != nil {
+		log.Sugar().Errorf("Could not open config.json: ", err)
 		panic(err)
 	}
 	defer contract_config.Close()
@@ -34,6 +39,7 @@ func main() {
 	// Read the contents of the file
 	data, err := io.ReadAll(contract_config)
 	if err != nil {
+		log.Sugar().Errorf("Could not read config.json: ", err)
 		panic(err)
 	}
 
@@ -41,6 +47,7 @@ func main() {
 	var contractData types.ContractData
 	err = json.Unmarshal(data, &contractData)
 	if err != nil {
+		log.Sugar().Errorf("Could not parse contract data from config.json: ", err)
 		panic(err)
 	}
 
@@ -63,9 +70,10 @@ func main() {
 	c := client.New(addr.(string), timeout, reactor, contractData)
 	c.Subscriber.Connect(ctx, addr.(string), timeout)
 	if err != nil {
-		fmt.Println("failed to connect!")
+		log.Error("failed to establish connection!")
 	}
+	c.Controller.Start(contractData)
 
-	fmt.Println("Calling Subscribe")
+	log.Info("Invoking Subscriber")
 	c.Subscriber.Subscribe(ctx, reactor, contractData)
 }

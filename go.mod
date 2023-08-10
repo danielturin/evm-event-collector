@@ -3,7 +3,7 @@ module evm-event-collector
 go 1.20
 
 require (
-	github.com/amirylm/lockfree v0.0.3-0.20230723130153-f7d97832f5c9
+	github.com/amirylm/lockfree v0.0.3-0.20230807063223-ff6edd112cd2
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/pkg/errors v0.9.1
 	github.com/shurcooL/graphql v0.0.0-20230714182844-3e04114ae69a
@@ -33,6 +33,8 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.5 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+	go.uber.org/zap v1.25.0 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect

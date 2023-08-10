@@ -2,7 +2,10 @@ package controllers
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
+	logger "evm-event-collector/logger"
 	"evm-event-collector/types"
 	"fmt"
 	"math/big"
@@ -18,12 +21,14 @@ import (
 type Controller interface {
 	Preprocess(e types.LogEvent, contractAbi abi.ABI) *types.Callback
 	Process(c types.Callback)
+	Start(contractDate types.ContractData)
 }
 
 type controller struct {
 	reactor      reactor.Reactor[types.LogEvent, types.Callback]
 	contractData types.ContractData
 	mutext       *sync.Mutex
+	log          *logger.Log
 }
 
 // filter is current config + add action (API for notification?)
@@ -32,8 +37,13 @@ func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent
 		reactor:      reactor,
 		contractData: contractData,
 		mutext:       &sync.Mutex{},
+		log:          logger.GetNamedLogger("controller"),
 	}
-	fmt.Printf("Iterating over events: %+v", contractData.Events)
+	return ctrl
+}
+
+func (ctrl *controller) Start(contractData types.ContractData) {
+	ctrl.log.Logger.Sugar().Info("Iterating over events: ", contractData.Events)
 	for _, event := range contractData.Events {
 		eventAbi := ""
 		for _, abi := range contractData.ABI {
@@ -42,52 +52,59 @@ func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent
 			}
 		}
 		contractAbi, _ := abi.JSON(bytes.NewReader([]byte(eventAbi)))
-		identifier := fmt.Sprintf("%s:%s", event.Addr, event.EventSig)
-		fmt.Printf("Identifier is: %s\n", identifier)
 
-		fmt.Println("Adding Handler...")
-		ctrl.reactor.AddHandler(identifier, func(e types.LogEvent) bool {
-			v := len(e.ID) > 0 && strings.EqualFold(e.Log.Address.String(), event.Addr)
-			fmt.Printf("INSIDE Handler Selector Bool value is: %+v\n", v)
-			return v
-		}, 1, func(e types.LogEvent, callback func(types.Callback, error)) {
-			go func(e types.LogEvent) {
-				fmt.Printf("EventHandler triggered: %s\n", e.Log.Address)
-				cb1 := ctrl.Preprocess(e, contractAbi)
+		randomBytes := make([]byte, 32)
+		_, err := rand.Read(randomBytes)
+		if err != nil {
+			ctrl.log.Logger.Error("Could not generate random bytes")
+		}
+
+		hasher := sha256.New()
+		hasher.Write(randomBytes)
+		hash := hasher.Sum(nil)
+
+		identifier := hex.EncodeToString(hash)
+		ctrl.log.Logger.Sugar().Info("Identifier is: ", identifier)
+
+		rs := &ReactiveServiceImpl{
+			SelectLogic: func(e reactor.Event[types.LogEvent]) bool {
+				return len(e.Data.ID) > 0 && strings.EqualFold(e.Data.Log.Address.String(), event.Addr)
+			},
+			HandleLogic: func(e reactor.Event[types.LogEvent], callback func(types.Callback, error)) {
+				ctrl.log.Logger.Sugar().Info("EventHandler triggered for: ", e.Data.Log.TxHash)
+				cb1 := ctrl.Preprocess(e.Data, contractAbi)
 				if cb1 != nil {
-					cb := *cb1
-					fmt.Printf("Preprocess completed\n")
-					fmt.Printf("Callback TxHash: %s\n", cb.TxHash.String())
-					fmt.Printf("Callback EventSigId: %s\n", cb.EventSigId)
+					ctrl.log.Logger.Sugar().Info("Preprocess completed for: ", e.Data.Log.TxHash)
 					callback(*cb1, nil)
 				}
-			}(e)
-		})
+			},
+		}
 
-		fmt.Printf("Adding Callback for %s\n", identifier)
-		ctrl.reactor.AddCallback(identifier, func(c types.Callback) bool {
-			v := len(c.Addr) > 0 && strings.EqualFold(c.Addr.String(), event.Addr) &&
-				strings.EqualFold(c.EventSigId.String(), event.EventSig)
-			fmt.Printf("INSIDE: Callback Selector Bool values is: %v\n", v)
-			return v
-		}, 1, func(c types.Callback) {
-			go func(c types.Callback) {
-				fmt.Printf("Callback Process triggered for %s\n", c.TxHash.String())
-				ctrl.Process(c)
-			}(c)
+		cs := &CallbackServiceImpl{
+			SelectLogic: func(c reactor.Event[types.Callback]) bool {
+				return len(c.Data.Addr) > 0 && strings.EqualFold(c.Data.Addr.String(), event.Addr) &&
+					strings.EqualFold(c.Data.EventSigId.String(), event.EventSig)
+			},
+			HandleLogic: func(c reactor.Event[types.Callback]) {
+				ctrl.log.Logger.Sugar().Info("Callback Process triggered for: ", c.Data.TxHash.String())
+				ctrl.Process(c.Data)
+			},
+		}
 
-		})
+		ctrl.log.Logger.Sugar().Info("Adding Callback for: ", identifier+"_callback")
+		ctrl.reactor.AddCallback(identifier+"_callback", cs, 1)
+
+		ctrl.log.Logger.Sugar().Info("Adding Handler for: ", identifier+"_handler")
+		ctrl.reactor.AddHandler(identifier+"_handler", rs, 1)
 	}
-	return ctrl
 }
 
 func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types.Callback {
-	fmt.Println("Preprocess: handling event")
 	ev, err := contractAbi.EventByID(e.Log.Topics[0])
 	if ev.Name == "Transfer" {
-		fmt.Println("Preprocess: Event fetched by ID and is of type Transfer")
+		ctrl.log.Logger.Info("Preprocess: Event fetched by ID and is of type Transfer")
 		if err != nil {
-			fmt.Println("could not find Event by ID")
+			ctrl.log.Logger.Sugar().Error("could not find Event by ID: ", err)
 			return nil
 		}
 		cb := &types.Callback{
@@ -107,7 +124,7 @@ func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types
 			fromAddress := common.BytesToAddress(topic1Bytes[12:])
 			cb.From = fromAddress
 		} else {
-			fmt.Println("Error decoding topic[1] value:", err)
+			ctrl.log.Logger.Sugar().Error("Error decoding topic[1] value: ", err)
 		}
 
 		// Handle To address
@@ -117,66 +134,90 @@ func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types
 			toAddress := common.BytesToAddress(topic2Bytes[12:])
 			cb.To = toAddress
 		} else {
-			fmt.Println("Error decoding topic[2] value:", err)
+			ctrl.log.Logger.Sugar().Error("Error decoding topic[2] value: ", err)
 		}
 
 		amount, err := contractAbi.Unpack("Transfer", e.Log.Data)
-		fmt.Printf("AMOUNT IS: %d\n", amount[0])
 		if err == nil {
-			cb.Amount = amount[0].(*big.Int)
+			bi_amount := amount[0].(*big.Int)
+			divisor := big.NewInt(1000000)
+			result := new(big.Float).Quo(new(big.Float).SetInt(bi_amount), new(big.Float).SetInt(divisor))
+			cb.Amount = *result
 		} else {
-			fmt.Printf("error unpacking transfer amount: %s\n", err)
+			ctrl.log.Logger.Sugar().Error("error unpacking transfer amount: ", err)
 		}
-		fmt.Println("Preprocess: Callback creation complete")
 		return cb
 	}
-	fmt.Println("Preprocess: event is not of type Transfer, returning nil")
+	ctrl.log.Logger.Sugar().Info("Preprocess: event is not of type Transfer, ignoring event: ", e.Log.TxHash)
 	return nil
 }
 
 // should receive interface of logDataEvent (allows types such as: transfer/burn etc...)
 func (ctrl *controller) Process(c types.Callback) {
-	fmt.Println("Locking mutex")
 	ctrl.mutext.Lock()
-	fmt.Println("Process: Starting to Process callback data")
 	filePath := "callbacksData.txt"
-	fmt.Println("Process: Attempting to open file")
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND, 0644)
 
 	if err != nil {
 		// If the file does not exist, create it
 		if os.IsNotExist(err) {
-			fmt.Println("Process: Crearting file")
+			ctrl.log.Logger.Info("Process: Crearting file")
 			file, err = os.Create(filePath)
 			if err != nil {
-				fmt.Println("Error creating file:", err)
+				ctrl.log.Logger.Sugar().Error("Error creating file: ", err)
 				return
 			}
 		} else {
 			// If there was an error other than the file not existing, handle it
-			fmt.Println("Error opening file:", err)
+			ctrl.log.Logger.Sugar().Error("Error opening file: ", err)
 			return
 		}
 	}
 
 	defer file.Close()
-	fmt.Println("Process: Writing to File")
-	// Write the new line to the file
+	ctrl.log.Logger.Sugar().Info("Process: Writing to File transaction:  ", hex.EncodeToString(c.TxHash[:]))
 	fmt.Fprintf(file, "EventName: %s\n", c.EventName)
 	fmt.Fprintf(file, "EventSig: %s\n", c.EventSig)
 	fmt.Fprintf(file, "EventSigId: %s\n", hex.EncodeToString(c.EventSigId[:]))
 	fmt.Fprintf(file, "From: %s\n", hex.EncodeToString(c.From[:]))
 	fmt.Fprintf(file, "To: %s\n", hex.EncodeToString(c.To[:]))
-	fmt.Fprintf(file, "Amount: %d\n", c.Amount)
+	fmt.Fprintf(file, "Amount: %s\n", c.Amount.Text('f', 10))
 	fmt.Fprintf(file, "TxHash: %s\n", hex.EncodeToString(c.TxHash[:]))
 	fmt.Fprintf(file, "Addr: %s\n", hex.EncodeToString(c.Addr[:]))
 	fmt.Fprintf(file, "BlockHash: %s\n", hex.EncodeToString(c.BlockHash[:]))
 	fmt.Fprintf(file, "BlockNumber: %d\n", c.BlockNumber)
 	fmt.Fprintf(file, "\n")
 
-	fmt.Println("Data written to the file successfully.")
-
-	fmt.Println("Line appended to existing file.")
+	ctrl.log.Logger.Info("Data written to the file successfully.")
 	ctrl.mutext.Unlock()
-	fmt.Println("Unlocked mutex")
+}
+
+type ReactiveServiceImpl struct {
+	SelectLogic func(event reactor.Event[types.LogEvent]) bool
+	HandleLogic func(event reactor.Event[types.LogEvent], callback func(types.Callback, error))
+}
+
+func (rs *ReactiveServiceImpl) Select(event reactor.Event[types.LogEvent]) bool {
+	// Call the logic function for Select with the event as an argument
+	return rs.SelectLogic(event)
+}
+
+func (rs *ReactiveServiceImpl) Handle(event reactor.Event[types.LogEvent], callback func(types.Callback, error)) {
+	// Call the logic function for Handle with the event and callback as arguments
+	rs.HandleLogic(event, callback)
+}
+
+type CallbackServiceImpl struct {
+	SelectLogic func(event reactor.Event[types.Callback]) bool
+	HandleLogic func(callback reactor.Event[types.Callback])
+}
+
+func (cs *CallbackServiceImpl) Select(event reactor.Event[types.Callback]) bool {
+	// Call the logic function for Select with the event as an argument
+	return cs.SelectLogic(event)
+}
+
+func (cs *CallbackServiceImpl) Handle(callback reactor.Event[types.Callback]) {
+	// Call the logic function for Handle with the event and callback as arguments
+	cs.HandleLogic(callback)
 }
