@@ -27,7 +27,7 @@ The following must be provided:
 {
     "ABI": [
       {
-        "name": "<Contract ABI Name">,
+        "name": "<Contract ABI Name>",
         "data": "<Escaped String of the complete contract ABI>" 
       }
     ],
