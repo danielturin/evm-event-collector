@@ -11,29 +11,34 @@ evm-event-collector utilized both native Golang, lock-free data structures (http
 ### Environment Configuration
 
 .env file must contain the following properties:
-* SOCKET_ADDRS: \<String Address providing websocket connectivity to the etherium blockchain infrastructure\>\n
+* SOCKET_ADDRS: \<String Address providing websocket connectivity to the etherium blockchain infrastructure\>
+
   example: "wss://mainnet.infura.io/ws/v3/<INFURA_API_TOKEN>"
-* TIMEOUT_DURATION: \<Desired connection timeout value in millisconds\>\n
+* TIMEOUT_DURATION: \<Desired connection timeout value in millisconds\>
+
   example: 10000000
 
 ### Collector Configuration
 The following must be provided:
 
-* config.json file located in root directory that must contain the following structure:
+* config.json file located in root directory that must contain the following structure: 
 {
     "ABI": [
       {
-        "name": <"Contract ABI Name">,
-        "data": "<Escaped String of the complete contract ABI>" 
+        "name": \<"Contract ABI Name"\>,
+        "data": "\<Escaped String of the complete contract ABI\>" 
       }
     ],
     "events": [
       { 
-          "addr": "<Contract Address>", 
-          "eventSig": "<Hash value of the desired event type signature>", 
-          "abi": "<Corresponding Contract ABI Name>" }
+          "addr": "\<Contract Address\>", 
+          "eventSig": "\<Hash value of the desired event type signature\>", 
+          "abi": "\<Corresponding Contract ABI Name\>"
+      }
     ]
 }
+
+An Example config.json is provided.
 
 ## Usage
 
