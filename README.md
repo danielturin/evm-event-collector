@@ -21,22 +21,25 @@ evm-event-collector utilized both native Golang, lock-free data structures (http
 ### Collector Configuration
 The following must be provided:
 
-* config.json file located in root directory that must contain the following structure: 
+* config.json file located in root directory that must contain the following structure:
+
+```json
 {
     "ABI": [
       {
-        "name": \<"Contract ABI Name"\>,
-        "data": "\<Escaped String of the complete contract ABI\>" 
+        "name": <"Contract ABI Name">,
+        "data": "<Escaped String of the complete contract ABI>" 
       }
     ],
     "events": [
       { 
-          "addr": "\<Contract Address\>", 
-          "eventSig": "\<Hash value of the desired event type signature\>", 
-          "abi": "\<Corresponding Contract ABI Name\>"
+          "addr": "<Contract Address>", 
+          "eventSig": "<Hash value of the desired event type signature>", 
+          "abi": "<Corresponding Contract ABI Name>"
       }
     ]
 }
+```
 
 An Example config.json is provided.
 
