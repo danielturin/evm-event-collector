@@ -31,7 +31,6 @@ type controller struct {
 	log          *logger.Log
 }
 
-// filter is current config + add action (API for notification?)
 func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent, types.Callback]) *controller {
 	ctrl := &controller{
 		reactor:      reactor,
