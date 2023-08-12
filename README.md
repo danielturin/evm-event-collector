@@ -11,10 +11,10 @@ evm-event-collector utilized both native Golang, lock-free data structures (http
 ### Environment Configuration
 
 .env file must contain the following properties:
-* SOCKET_ADDRS: \<String Address providing websocket connectivity to the etherium blockchain infrastructure\>
-example: "wss://mainnet.infura.io/ws/v3/<INFURA_API_TOKEN>"
-* TIMEOUT_DURATION: <Desired connection timeout value in millisconds>
-example: 10000000
+* SOCKET_ADDRS: \<String Address providing websocket connectivity to the etherium blockchain infrastructure\>\n
+  example: "wss://mainnet.infura.io/ws/v3/<INFURA_API_TOKEN>"
+* TIMEOUT_DURATION: \<Desired connection timeout value in millisconds\>\n
+  example: 10000000
 
 ### Collector Configuration
 The following must be provided:
