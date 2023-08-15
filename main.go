@@ -16,7 +16,7 @@ import (
 
 func main() {
 	logger.CreateLoggerInstance()
-	log := logger.GetNamedLogger("main").Logger
+	log := logger.GetNamedLogger("main")
 
 	defer logger.Sync()
 	viper.SetConfigFile(".env")

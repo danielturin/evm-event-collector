@@ -12,6 +12,7 @@ import (
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 type Filter struct {
@@ -33,7 +34,7 @@ func New(addr string, timeout time.Duration) *subscriber {
 
 type subscriber struct {
 	conn *ethclient.Client
-	log  *logger.Log
+	log  *zap.Logger
 }
 
 func (s *subscriber) Connect(pctx context.Context, addr string, timeout time.Duration) error {
@@ -46,11 +47,11 @@ func (s *subscriber) Connect(pctx context.Context, addr string, timeout time.Dur
 }
 
 func (s *subscriber) connect(pctx context.Context, addr string, timeout time.Duration) (*ethclient.Client, error) {
-	s.log.Logger.Sugar().Info("Establishing connection to ", addr)
+	s.log.Info("Establishing connection to ", zap.String("Address", addr))
 	conn, err := ethclient.DialContext(pctx, addr)
 
 	if err != nil {
-		s.log.Logger.Sugar().Error("Connceetion Failure: ", err)
+		s.log.Error("Connceetion Failure: ", zap.Error(err))
 		return nil, errors.Wrap(err, "connection failure")
 	}
 	return conn, nil
@@ -61,35 +62,35 @@ func (s *subscriber) Subscribe(ctx context.Context, reactor reactor.Reactor[type
 
 	filtersQuery := ethereum.FilterQuery{}
 	genFiltersQuery(&filtersQuery, contractData)
-	s.log.Logger.Info("Subscribing to Filter Logs")
+	s.log.Debug("Subscribing to Filter Logs")
 	sub, err := s.conn.SubscribeFilterLogs(ctx, filtersQuery, logs)
 	if err != nil {
-		s.log.Logger.Sugar().Error("failed to SubscribeFilterLogs ", err)
+		s.log.Error("failed to SubscribeFilterLogs ", zap.Error(err))
 		return nil
 	}
 	defer sub.Unsubscribe()
-	go s.listen(sub, logs, reactor, contractData)
+	go s.listen(sub, logs, reactor)
 	select {
 	case <-ctx.Done():
-		s.log.Logger.Info("Context terminated")
+		s.log.Debug("Context terminated")
 	case err := <-sub.Err():
-		s.log.Logger.Sugar().Error("Context error: ", err)
+		s.log.Error("Context error: ", zap.Error(err))
 	}
 
 	return nil
 }
 
-func (s *subscriber) listen(sub ethereum.Subscription, logs chan gethtypes.Log, reactor reactor.Reactor[types.LogEvent, types.Callback], contractData types.ContractData) {
-	s.log.Logger.Info("Listening for Events")
+func (s *subscriber) listen(sub ethereum.Subscription, logs chan gethtypes.Log, reactor reactor.Reactor[types.LogEvent, types.Callback]) {
+	s.log.Debug("Listening for Events")
 	for {
-		s.log.Logger.Info("Waiting for channel input")
+		s.log.Debug("Waiting for channel input")
 		select {
 		case log := <-logs:
-			s.log.Logger.Sugar().Info("Received Log for Transaction: ", log.TxHash)
+			s.log.Debug("Received Log for Transaction: ", zap.String("TxHash", log.TxHash.Hex()))
 			go s.processEvent(log, reactor)
 
 		case err := <-sub.Err():
-			s.log.Logger.Sugar().Error("Failed while listening: ", err)
+			s.log.Error("Failed while listening: ", zap.Error(err))
 			errors.Wrap(err, "retrieving log from subscription failed")
 		}
 	}
@@ -104,6 +105,6 @@ func genFiltersQuery(filters *ethereum.FilterQuery, contractData types.ContractD
 func (s *subscriber) processEvent(log gethtypes.Log, reactor reactor.Reactor[types.LogEvent, types.Callback]) {
 	id := log.Address.String()
 	e := types.LogEvent{Log: log, ID: id}
-	s.log.Logger.Sugar().Info("processEvent: enqueuing event for TxHash - ", e.Log.TxHash)
+	s.log.Debug("processEvent: enqueuing event for TxHash - ", zap.String("TxHash", e.Log.TxHash.Hex()))
 	reactor.Enqueue(e)
 }

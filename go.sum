@@ -46,6 +46,8 @@ github.com/amirylm/go-options v0.0.2 h1:OvuFcKUg3+7jdKeY54XrRnAIxP9Dmultlg9dS7Q3
 github.com/amirylm/go-options v0.0.2/go.mod h1:OmhJW65Aeyb74akzydI9SVgCjuwKlPNcTZeXk7TETPk=
 github.com/amirylm/lockfree v0.0.3-0.20230807063223-ff6edd112cd2 h1:6+CO7ziVfClmGFhYUJ1FhdPrDMfPgA2JSwd0yN/fP6k=
 github.com/amirylm/lockfree v0.0.3-0.20230807063223-ff6edd112cd2/go.mod h1:92tGIqOCCQdd9SR5nGLYwK4GN9PTKlQmRwXKxqfVz/U=
+github.com/amirylm/lockfree v0.0.3 h1:f1gb3dcSvAw6zX4HfaSN08tvo0DDI/Jocxq1NiF4UKM=
+github.com/amirylm/lockfree v0.0.3/go.mod h1:92tGIqOCCQdd9SR5nGLYwK4GN9PTKlQmRwXKxqfVz/U=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/btcsuite/btcd/btcec/v2 v2.2.0 h1:fzn1qaOt32TuLjFlkzYSsBC35Q3KUjT1SwPxiMSCF5k=
