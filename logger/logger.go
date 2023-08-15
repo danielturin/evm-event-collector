@@ -18,27 +18,29 @@ var (
 )
 
 type Log struct {
-	Logger *zap.Logger
+	logger *zap.Logger
 }
 
 func CreateLoggerInstance() {
 	once.Do(func() {
-		logger, err := zap.NewProduction()
+		logger, err := zap.NewDevelopmentConfig().Build()
+
 		if err != nil {
 			panic("Failed to initialize logger")
 		}
 		instance = &Log{
-			Logger: logger,
+			logger: logger,
 		}
 	})
 }
 
-func GetNamedLogger(name string) *Log {
-	return &Log{
-		Logger: instance.Logger.Named(name),
+func GetNamedLogger(name string) *zap.Logger {
+	if instance.logger == nil {
+		CreateLoggerInstance()
 	}
+	return instance.logger.Named(name)
 }
 
 func Sync() {
-	instance.Logger.Sync()
+	instance.logger.Sync()
 }
