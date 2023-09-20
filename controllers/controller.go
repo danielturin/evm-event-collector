@@ -154,7 +154,7 @@ func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types
 			ctrl.log.Warn("error unpacking transfer amount: ", zap.Error(err))
 		}
 
-		ctrl.data_queue.Enqueue(*cb)
+		// ctrl.data_queue.Enqueue(*cb)
 		return cb
 	}
 	ctrl.log.Debug("Preprocess: event is not of type Transfer, ignoring event: ", zap.String("TxHash", e.Log.TxHash.Hex()))
@@ -162,6 +162,7 @@ func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types
 }
 
 func (ctrl *controller) Process(c types.Callback) {
+	ctrl.data_queue.Enqueue(c)
 	ctrl.mutext.Lock()
 	filePath := "callbacksData.txt"
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND, 0644)
@@ -198,10 +199,6 @@ func (ctrl *controller) Process(c types.Callback) {
 
 	ctrl.log.Debug("Data written to the file successfully.")
 	ctrl.mutext.Unlock()
-}
-
-func (ctrl *controller) GetDataQueue() core.Queue[types.Callback] {
-	return ctrl.data_queue
 }
 
 type ReactiveServiceImpl struct {
