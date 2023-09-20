@@ -12,14 +12,13 @@ import (
 	"github.com/amirylm/lockfree/reactor"
 )
 
-type Client interface {
-	Start()
-	New(addr string, timeout time.Duration,
-		reactor reactor.Reactor[types.LogEvent, types.Callback],
-		contractData types.ContractData) *client
-}
+// type Client interface {
+// 	New(addr string, timeout time.Duration,
+// 		reactor reactor.Reactor[types.LogEvent, types.Callback],
+// 		contractData types.ContractData) *client
+// }
 
-type client struct {
+type Client struct {
 	Subscriber subscriber.Subscriber
 	Controller controllers.Controller
 	Data_Queue core.Queue[types.Callback]
@@ -27,15 +26,15 @@ type client struct {
 
 func New(addr string, timeout time.Duration,
 	reactor reactor.Reactor[types.LogEvent, types.Callback],
-	contractData types.ContractData) *client {
+	contractData types.ContractData) *Client {
 	data_queue := queue.New(queue.WithCapacity[types.Callback](32768))
-	return &client{
+	return &Client{
 		Subscriber: subscriber.New(addr, timeout),
 		Controller: controllers.New(contractData, reactor, data_queue),
 		Data_Queue: data_queue,
 	}
 }
 
-func (cl *client) GetDataQueue() core.Queue[types.Callback] {
+func (cl *Client) GetDataQueue() core.Queue[types.Callback] {
 	return cl.Data_Queue
 }

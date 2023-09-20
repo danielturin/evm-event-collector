@@ -7,30 +7,30 @@ import (
 	"os"
 	"time"
 
-	client "github.com/danielturin/evm-event-collector/client"
+	"github.com/danielturin/evm-event-collector/client"
 	"github.com/danielturin/evm-event-collector/logger"
 	"github.com/danielturin/evm-event-collector/types"
 
 	"github.com/amirylm/lockfree/reactor"
 )
 
-type collector_client struct {
-	Client client.Client
+type Collector interface {
+	Start() *collector
 }
 
-func (cl *collector_client) Start(socket_addr interface{}, timeout_duration interface{}) {
+type collector struct {
+	CollectorClient client.Client
+}
+
+func Start(addr string, timeout_duration int64) *collector {
 	logger.CreateLoggerInstance()
 	log := logger.GetNamedLogger("collector_client")
 
 	defer logger.Sync()
-	// viper.SetConfigFile(".env")
-	// viper.ReadInConfig()
-	addr := socket_addr
-	timeout_env := timeout_duration
 
-	if len(addr.(string)) == 0 {
+	if len(addr) == 0 {
 		log.Error("Please enter a valid websocket SOCKET_ADDRS in .env")
-		return
+		return nil
 	}
 
 	contract_config, err := os.Open("config.json")
@@ -65,14 +65,16 @@ func (cl *collector_client) Start(socket_addr interface{}, timeout_duration inte
 		_ = reactor.Start(ctx)
 	}()
 
-	timeoutInt64, ok := timeout_env.(int64)
-	if !ok {
-		timeoutInt64 = 100000 // default fallback timeout
+	if timeout_duration == 0 {
+		timeout_duration = 100000 // default fallback timeout
 	}
-	timeout := time.Duration(timeoutInt64) * time.Millisecond
+	timeout := time.Duration(timeout_duration) * time.Millisecond
 
-	c := client.New(addr.(string), timeout, reactor, contractData)
-	c.Subscriber.Connect(ctx, addr.(string), timeout)
+	c := client.New(addr, timeout, reactor, contractData)
+	cc := &collector{
+		CollectorClient: *c,
+	}
+	c.Subscriber.Connect(ctx, addr, timeout)
 	if err != nil {
 		log.Error("failed to establish connection!")
 	}
@@ -80,4 +82,5 @@ func (cl *collector_client) Start(socket_addr interface{}, timeout_duration inte
 
 	log.Info("Invoking Subscriber")
 	c.Subscriber.Subscribe(ctx, reactor, contractData)
+	return cc
 }
