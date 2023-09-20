@@ -34,3 +34,7 @@ func New(addr string, timeout time.Duration,
 		Data_Queue: data_queue,
 	}
 }
+
+func (cl *client) GetDataQueue() core.Queue[types.Callback] {
+	return cl.Data_Queue
+}
