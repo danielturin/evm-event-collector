@@ -3,12 +3,13 @@ package collector_client
 import (
 	"context"
 	"encoding/json"
-	client "evm-event-collector/client"
-	"evm-event-collector/logger"
-	"evm-event-collector/types"
 	"io"
 	"os"
 	"time"
+
+	client "github.com/danielturin/evm-event-collector/client"
+	"github.com/danielturin/evm-event-collector/logger"
+	"github.com/danielturin/evm-event-collector/types"
 
 	"github.com/amirylm/lockfree/reactor"
 )

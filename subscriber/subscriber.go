@@ -2,9 +2,11 @@ package subscriber
 
 import (
 	"context"
-	logger "evm-event-collector/logger"
-	"evm-event-collector/types"
 	"time"
+
+	"github.com/danielturin/evm-event-collector/types"
+
+	logger "github.com/danielturin/evm-event-collector/logger"
 
 	"github.com/amirylm/lockfree/reactor"
 	"github.com/ethereum/go-ethereum"

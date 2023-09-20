@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
-	client "evm-event-collector/client"
-	"evm-event-collector/logger"
-	"evm-event-collector/types"
 	"io"
 	"os"
 	"time"
+
+	"github.com/danielturin/evm-event-collector/types"
+
+	"github.com/danielturin/evm-event-collector/logger"
+
+	client "github.com/danielturin/evm-event-collector/client"
 
 	"github.com/amirylm/lockfree/reactor"
 	"github.com/spf13/viper"

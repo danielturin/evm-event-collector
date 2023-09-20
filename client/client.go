@@ -1,10 +1,11 @@
 package client
 
 import (
-	"evm-event-collector/controllers"
-	"evm-event-collector/subscriber"
-	"evm-event-collector/types"
 	"time"
+
+	"github.com/danielturin/evm-event-collector/controllers"
+	"github.com/danielturin/evm-event-collector/subscriber"
+	"github.com/danielturin/evm-event-collector/types"
 
 	"github.com/amirylm/lockfree/core"
 	"github.com/amirylm/lockfree/queue"

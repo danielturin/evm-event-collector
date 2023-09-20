@@ -5,13 +5,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	logger "evm-event-collector/logger"
-	"evm-event-collector/types"
 	"fmt"
 	"math/big"
 	"os"
 	"strings"
 	"sync"
+
+	logger "github.com/danielturin/evm-event-collector/logger"
+	"github.com/danielturin/evm-event-collector/types"
 
 	"github.com/amirylm/lockfree/core"
 	"github.com/amirylm/lockfree/reactor"
