@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/danielturin/evm-event-collector/client"
@@ -109,13 +110,24 @@ func (col *collector) Start(addr string, timeout_duration int64) {
 		timeout_duration = 100000 // default fallback timeout
 	}
 	timeout := time.Duration(timeout_duration) * time.Millisecond
+	var wg1 sync.WaitGroup
+	wg1.Add(1)
+	go func() {
+		col.CollectorClient.Subscriber.Connect(ctx, addr, timeout)
+		if err != nil {
+			log.Error("failed to establish connection!")
+		}
+		wg1.Done()
+	}()
+	wg1.Wait()
+	var wg2 sync.WaitGroup
+	wg2.Add(1)
+	go func() {
+		col.CollectorClient.Controller.Start(contractData)
 
-	col.CollectorClient.Subscriber.Connect(ctx, addr, timeout)
-	if err != nil {
-		log.Error("failed to establish connection!")
-	}
-	col.CollectorClient.Controller.Start(contractData)
-
+		wg2.Done()
+	}()
+	wg2.Wait()
 	log.Info("Invoking Subscriber")
 	col.CollectorClient.Subscriber.Subscribe(ctx, col.Reactor, contractData)
 }
