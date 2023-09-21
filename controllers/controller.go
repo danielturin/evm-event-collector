@@ -166,8 +166,6 @@ func (ctrl *controller) Process(c types.Callback, inbound_callbacks chan types.C
 	// ctrl.data_queue.Enqueue(c)
 	go func(chan types.Callback) {
 		ctrl.log.Debug("CALLBACK SENT TO CHANNEL: ", zap.Any("Callback", c))
-		// ctrl.log.Debug("CALLBACK AMOUNT: ", zap.Any("Amount", c.Amount.Text('f', 10)))
-
 		inbound_callbacks <- c
 	}(inbound_callbacks)
 	// ctrl.log.Debug("ENQUEUE COMPLETE - new size is: ", zap.Int("Size", ctrl.data_queue.Size()))
@@ -198,7 +196,7 @@ func (ctrl *controller) Process(c types.Callback, inbound_callbacks chan types.C
 	fmt.Fprintf(file, "EventSigId: %s\n", hex.EncodeToString(c.EventSigId[:]))
 	fmt.Fprintf(file, "From: %s\n", hex.EncodeToString(c.From[:]))
 	fmt.Fprintf(file, "To: %s\n", hex.EncodeToString(c.To[:]))
-	fmt.Fprintf(file, "Amount: %s\n", c.Amount.Text('f', 10))
+	fmt.Fprintf(file, "Amount: %s\n", c.Amount)
 	fmt.Fprintf(file, "TxHash: %s\n", hex.EncodeToString(c.TxHash[:]))
 	fmt.Fprintf(file, "Addr: %s\n", hex.EncodeToString(c.Addr[:]))
 	fmt.Fprintf(file, "BlockHash: %s\n", hex.EncodeToString(c.BlockHash[:]))
