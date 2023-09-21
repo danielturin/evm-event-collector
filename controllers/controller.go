@@ -150,7 +150,7 @@ func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types
 			bi_amount := amount[0].(*big.Int)
 			divisor := big.NewInt(1000000)
 			result := new(big.Float).Quo(new(big.Float).SetInt(bi_amount), new(big.Float).SetInt(divisor))
-			cb.Amount = *result
+			cb.Amount = (*result).Text('f', 10)
 		} else {
 			ctrl.log.Warn("error unpacking transfer amount: ", zap.Error(err))
 		}
@@ -166,7 +166,7 @@ func (ctrl *controller) Process(c types.Callback, inbound_callbacks chan types.C
 	// ctrl.data_queue.Enqueue(c)
 	go func(chan types.Callback) {
 		ctrl.log.Debug("CALLBACK SENT TO CHANNEL: ", zap.Any("Callback", c))
-		ctrl.log.Debug("CALLBACK AMOUNT: ", zap.Any("Amount", c.Amount.Text('f', 10)))
+		// ctrl.log.Debug("CALLBACK AMOUNT: ", zap.Any("Amount", c.Amount.Text('f', 10)))
 
 		inbound_callbacks <- c
 	}(inbound_callbacks)

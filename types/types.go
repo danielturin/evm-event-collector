@@ -1,8 +1,6 @@
 package types
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shurcooL/graphql"
@@ -34,7 +32,7 @@ type Callback struct {
 	EventSigId  common.Hash    `json:"eventSigId"`
 	From        common.Address `json:"from"`
 	To          common.Address `json:"to"`
-	Amount      big.Float      `json:"amount"`
+	Amount      string         `json:"amount"`
 	TxHash      common.Hash    `json:"txHash"`
 	Addr        common.Address `json:"address"`
 	BlockHash   common.Hash    `json:"blockHash"`
