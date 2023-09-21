@@ -164,6 +164,7 @@ func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types
 
 func (ctrl *controller) Process(c types.Callback) {
 	ctrl.data_queue.Enqueue(c)
+	ctrl.log.Debug("ENQUEUE COMPLETE - new size is: ", zap.Int("Size", ctrl.data_queue.Size()))
 	ctrl.mutext.Lock()
 	filePath := "callbacksData.txt"
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND, 0644)

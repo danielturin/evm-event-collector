@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/danielturin/evm-event-collector/client"
+	"github.com/danielturin/evm-event-collector/controllers"
 	"github.com/danielturin/evm-event-collector/logger"
+	"github.com/danielturin/evm-event-collector/subscriber"
 	"github.com/danielturin/evm-event-collector/types"
 
 	"github.com/amirylm/lockfree/reactor"
@@ -74,13 +76,15 @@ func Start(addr string, timeout_duration int64) *collector {
 	cc := &collector{
 		CollectorClient: *c,
 	}
-	c.Subscriber.Connect(ctx, addr, timeout)
-	if err != nil {
-		log.Error("failed to establish connection!")
-	}
-	c.Controller.Start(contractData)
+	go func(subscriber.Subscriber, controllers.Controller) {
+		c.Subscriber.Connect(ctx, addr, timeout)
+		if err != nil {
+			log.Error("failed to establish connection!")
+		}
+		c.Controller.Start(contractData)
 
-	log.Info("Invoking Subscriber")
-	c.Subscriber.Subscribe(ctx, reactor, contractData)
+		log.Info("Invoking Subscriber")
+		c.Subscriber.Subscribe(ctx, reactor, contractData)
+	}(c.Subscriber, c.Controller)
 	return cc
 }
