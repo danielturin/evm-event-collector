@@ -71,7 +71,7 @@ func New() *collector {
 	return cc
 }
 
-func (col *collector) Start(c client.Client, addr string, timeout_duration int64) {
+func (col *collector) Start(addr string, timeout_duration int64) {
 	logger.CreateLoggerInstance()
 	log := logger.GetNamedLogger("collector_client")
 
@@ -89,14 +89,14 @@ func (col *collector) Start(c client.Client, addr string, timeout_duration int64
 	timeout := time.Duration(timeout_duration) * time.Millisecond
 
 	log.Info("Establishing Blockchain Node Connection")
-	err := c.Subscriber.Connect(ctx, addr, timeout)
+	err := col.CollectorClient.Subscriber.Connect(ctx, addr, timeout)
 	if err != nil {
 		log.Error("failed to establish connection!")
 	}
 
 	log.Info("Initializing Controller")
-	c.Controller.Start(col.ContractData)
+	col.CollectorClient.Controller.Start(col.ContractData)
 
 	log.Info("Commencing Subscription")
-	c.Subscriber.Subscribe(ctx, col.Reactor, col.ContractData)
+	col.CollectorClient.Subscriber.Subscribe(ctx, col.Reactor, col.ContractData)
 }
