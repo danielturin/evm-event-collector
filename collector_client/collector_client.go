@@ -33,7 +33,7 @@ func Start(addr string, timeout_duration int64) *collector {
 		return nil
 	}
 
-	contract_config, err := os.Open("config.json")
+	contract_config, err := os.Open("../config.json")
 	if err != nil {
 		log.Sugar().Errorf("Could not open config.json: ", err)
 		panic(err)
