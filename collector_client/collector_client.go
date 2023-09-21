@@ -22,7 +22,7 @@ type collector struct {
 	CollectorClient client.Client
 }
 
-func Start(addr string, timeout_duration int64) *collector {
+func Start(addr string, inbound_callbacks chan types.Callback, timeout_duration int64) *collector {
 	logger.CreateLoggerInstance()
 	log := logger.GetNamedLogger("collector_client")
 
@@ -78,7 +78,7 @@ func Start(addr string, timeout_duration int64) *collector {
 	if err != nil {
 		log.Error("failed to establish connection!")
 	}
-	c.Controller.Start(contractData)
+	c.Controller.Start(contractData, inbound_callbacks)
 
 	log.Info("Invoking Subscriber")
 	c.Subscriber.Subscribe(ctx, reactor, contractData)

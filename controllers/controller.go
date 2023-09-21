@@ -23,8 +23,8 @@ import (
 
 type Controller interface {
 	Preprocess(e types.LogEvent, contractAbi abi.ABI) *types.Callback
-	Process(c types.Callback)
-	Start(contractDate types.ContractData)
+	Process(c types.Callback, ch chan types.Callback)
+	Start(contractDate types.ContractData, inbound_callbacks chan types.Callback)
 }
 
 type controller struct {
@@ -46,7 +46,7 @@ func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent
 	return ctrl
 }
 
-func (ctrl *controller) Start(contractData types.ContractData) {
+func (ctrl *controller) Start(contractData types.ContractData, inbound_callbacks chan types.Callback) {
 	ctrl.log.Info("Iterating over events", zap.Any("events", contractData.Events))
 	for _, event := range contractData.Events {
 		eventAbi := ""
@@ -93,7 +93,7 @@ func (ctrl *controller) Start(contractData types.ContractData) {
 			HandleLogic: func(c reactor.Event[types.Callback]) {
 				ctrl.log.Debug("Callback Process triggered", zap.String("txHash", c.Data.TxHash.Hex()))
 				go func(c reactor.Event[types.Callback]) {
-					ctrl.Process(c.Data)
+					ctrl.Process(c.Data, inbound_callbacks)
 				}(c)
 			},
 		}
@@ -162,9 +162,13 @@ func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types
 	return nil
 }
 
-func (ctrl *controller) Process(c types.Callback) {
-	ctrl.data_queue.Enqueue(c)
-	ctrl.log.Debug("ENQUEUE COMPLETE - new size is: ", zap.Int("Size", ctrl.data_queue.Size()))
+func (ctrl *controller) Process(c types.Callback, inbound_callbacks chan types.Callback) {
+	// ctrl.data_queue.Enqueue(c)
+	go func(chan types.Callback) {
+		ctrl.log.Debug("CALLBACK SENT TO CHANNEL: ", zap.Any("Callback", c))
+		inbound_callbacks <- c
+	}(inbound_callbacks)
+	// ctrl.log.Debug("ENQUEUE COMPLETE - new size is: ", zap.Int("Size", ctrl.data_queue.Size()))
 	ctrl.mutext.Lock()
 	filePath := "callbacksData.txt"
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND, 0644)

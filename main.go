@@ -75,7 +75,8 @@ func main() {
 	if err != nil {
 		log.Error("failed to establish connection!")
 	}
-	c.Controller.Start(contractData)
+	inbound_callbacks := make(chan types.Callback)
+	c.Controller.Start(contractData, inbound_callbacks)
 
 	log.Info("Invoking Subscriber")
 	c.Subscriber.Subscribe(ctx, reactor, contractData)
