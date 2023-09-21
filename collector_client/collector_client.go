@@ -8,9 +8,7 @@ import (
 	"time"
 
 	"github.com/danielturin/evm-event-collector/client"
-	"github.com/danielturin/evm-event-collector/controllers"
 	"github.com/danielturin/evm-event-collector/logger"
-	"github.com/danielturin/evm-event-collector/subscriber"
 	"github.com/danielturin/evm-event-collector/types"
 
 	"github.com/amirylm/lockfree/reactor"
@@ -22,18 +20,15 @@ type Collector interface {
 
 type collector struct {
 	CollectorClient client.Client
+	Reactor         reactor.Reactor[types.LogEvent, types.Callback]
+	ContractData    types.ContractData
 }
 
-func Start(addr string, timeout_duration int64) *collector {
+func New() *collector {
 	logger.CreateLoggerInstance()
 	log := logger.GetNamedLogger("collector_client")
 
 	defer logger.Sync()
-
-	if len(addr) == 0 {
-		log.Error("Please enter a valid websocket SOCKET_ADDRS in .env")
-		return nil
-	}
 
 	contract_config, err := os.Open("./config.json")
 	if err != nil {
@@ -67,24 +62,41 @@ func Start(addr string, timeout_duration int64) *collector {
 		_ = reactor.Start(ctx)
 	}()
 
+	c := client.New(reactor, contractData)
+	cc := &collector{
+		CollectorClient: *c,
+		Reactor:         reactor,
+		ContractData:    contractData,
+	}
+	return cc
+}
+
+func (col *collector) Start(c client.Client, addr string, timeout_duration int64) {
+	logger.CreateLoggerInstance()
+	log := logger.GetNamedLogger("collector_client")
+
+	defer logger.Sync()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if len(addr) == 0 {
+		log.Error("Please enter a valid websocket SOCKET_ADDRS in .env")
+		return
+	}
+
 	if timeout_duration == 0 {
 		timeout_duration = 100000 // default fallback timeout
 	}
 	timeout := time.Duration(timeout_duration) * time.Millisecond
 
-	c := client.New(addr, timeout, reactor, contractData)
-	cc := &collector{
-		CollectorClient: *c,
+	log.Info("Establishing Blockchain Node Connection")
+	err := c.Subscriber.Connect(ctx, addr, timeout)
+	if err != nil {
+		log.Error("failed to establish connection!")
 	}
-	go func(subscriber.Subscriber, controllers.Controller) {
-		c.Subscriber.Connect(ctx, addr, timeout)
-		if err != nil {
-			log.Error("failed to establish connection!")
-		}
-		c.Controller.Start(contractData)
 
-		log.Info("Invoking Subscriber")
-		c.Subscriber.Subscribe(ctx, reactor, contractData)
-	}(c.Subscriber, c.Controller)
-	return cc
+	log.Info("Initializing Controller")
+	c.Controller.Start(col.ContractData)
+
+	log.Info("Commencing Subscription")
+	c.Subscriber.Subscribe(ctx, col.Reactor, col.ContractData)
 }

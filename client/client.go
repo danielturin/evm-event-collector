@@ -1,8 +1,6 @@
 package client
 
 import (
-	"time"
-
 	"github.com/danielturin/evm-event-collector/controllers"
 	"github.com/danielturin/evm-event-collector/subscriber"
 	"github.com/danielturin/evm-event-collector/types"
@@ -24,12 +22,11 @@ type Client struct {
 	Data_Queue core.Queue[types.Callback]
 }
 
-func New(addr string, timeout time.Duration,
-	reactor reactor.Reactor[types.LogEvent, types.Callback],
+func New(reactor reactor.Reactor[types.LogEvent, types.Callback],
 	contractData types.ContractData) *Client {
 	data_queue := queue.New(queue.WithCapacity[types.Callback](32768))
 	return &Client{
-		Subscriber: subscriber.New(addr, timeout),
+		Subscriber: subscriber.New(),
 		Controller: controllers.New(contractData, reactor, data_queue),
 		Data_Queue: data_queue,
 	}

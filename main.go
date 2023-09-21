@@ -70,7 +70,7 @@ func main() {
 	}
 	timeout := time.Duration(timeoutInt64) * time.Millisecond
 
-	c := client.New(addr.(string), timeout, reactor, contractData)
+	c := client.New(reactor, contractData)
 	c.Subscriber.Connect(ctx, addr.(string), timeout)
 	if err != nil {
 		log.Error("failed to establish connection!")
