@@ -29,15 +29,16 @@ type LogEvent struct {
 }
 
 type Callback struct {
-	EventName   string
-	EventSig    string
-	EventSigId  common.Hash
-	From, To    common.Address
-	Amount      big.Float
-	TxHash      common.Hash
-	Addr        common.Address
-	BlockHash   common.Hash
-	BlockNumber uint64
+	EventName   string         `json:"eventName"`
+	EventSig    string         `json:"eventSig"`
+	EventSigId  common.Hash    `json:"eventSigId"`
+	From        common.Address `json:"from"`
+	To          common.Address `json:"to"`
+	Amount      big.Float      `json:"amount"`
+	TxHash      common.Hash    `json:"txHash"`
+	Addr        common.Address `json:"address"`
+	BlockHash   common.Hash    `json:"blockHash"`
+	BlockNumber uint64         `json:"blockNumber"`
 }
 
 type ABIEntry struct {
