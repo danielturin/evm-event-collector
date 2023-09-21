@@ -166,6 +166,8 @@ func (ctrl *controller) Process(c types.Callback, inbound_callbacks chan types.C
 	// ctrl.data_queue.Enqueue(c)
 	go func(chan types.Callback) {
 		ctrl.log.Debug("CALLBACK SENT TO CHANNEL: ", zap.Any("Callback", c))
+		ctrl.log.Debug("CALLBACK AMOUNT: ", zap.Any("Amount", c.Amount.Text('f', 10)))
+
 		inbound_callbacks <- c
 	}(inbound_callbacks)
 	// ctrl.log.Debug("ENQUEUE COMPLETE - new size is: ", zap.Int("Size", ctrl.data_queue.Size()))
