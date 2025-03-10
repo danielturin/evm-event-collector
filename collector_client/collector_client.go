@@ -1,4 +1,4 @@
-package main
+package collector_client
 
 import (
 	"context"
@@ -7,32 +7,33 @@ import (
 	"os"
 	"time"
 
+	"github.com/danielturin/evm-event-collector/client"
+	"github.com/danielturin/evm-event-collector/logger"
 	"github.com/danielturin/evm-event-collector/types"
 
-	"github.com/danielturin/evm-event-collector/logger"
-
-	client "github.com/danielturin/evm-event-collector/client"
-
 	"github.com/amirylm/lockfree/reactor"
-	"github.com/spf13/viper"
 )
 
-func main() {
+type Collector interface {
+	Start() *collector
+}
+
+type collector struct {
+	CollectorClient client.Client
+}
+
+func Start(addr string, inbound_callbacks chan types.Callback, timeout_duration int64) *collector {
 	logger.CreateLoggerInstance()
-	log := logger.GetNamedLogger("main")
+	log := logger.GetNamedLogger("collector_client")
 
 	defer logger.Sync()
-	viper.SetConfigFile(".env")
-	viper.ReadInConfig()
-	addr := viper.Get("SOCKET_ADDRS")
-	timeout_env := viper.Get("TIMEOUT_DURATION")
 
-	if len(addr.(string)) == 0 {
+	if len(addr) == 0 {
 		log.Error("Please enter a valid websocket SOCKET_ADDRS in .env")
-		return
+		return nil
 	}
 
-	contract_config, err := os.Open("config.json")
+	contract_config, err := os.Open("./config.json")
 	if err != nil {
 		log.Sugar().Errorf("Could not open config.json: ", err)
 		panic(err)
@@ -64,20 +65,22 @@ func main() {
 		_ = reactor.Start(ctx)
 	}()
 
-	timeoutInt64, ok := timeout_env.(int64)
-	if !ok {
-		timeoutInt64 = 100000 // default fallback timeout
+	if timeout_duration == 0 {
+		timeout_duration = 100000 // default fallback timeout
 	}
-	timeout := time.Duration(timeoutInt64) * time.Millisecond
+	timeout := time.Duration(timeout_duration) * time.Millisecond
 
 	c := client.New(reactor, contractData)
-	c.Subscriber.Connect(ctx, addr.(string), timeout)
+	cc := &collector{
+		CollectorClient: *c,
+	}
+	c.Subscriber.Connect(ctx, addr, timeout)
 	if err != nil {
 		log.Error("failed to establish connection!")
 	}
-	inbound_callbacks := make(chan types.Callback)
 	c.Controller.Start(contractData, inbound_callbacks)
 
 	log.Info("Invoking Subscriber")
 	c.Subscriber.Subscribe(ctx, reactor, contractData)
+	return cc
 }

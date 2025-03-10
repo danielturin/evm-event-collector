@@ -1,4 +1,4 @@
-module evm-event-collector
+module github.com/danielturin/evm-event-collector
 
 go 1.20
 

@@ -2,9 +2,11 @@ package subscriber
 
 import (
 	"context"
-	logger "evm-event-collector/logger"
-	"evm-event-collector/types"
 	"time"
+
+	"github.com/danielturin/evm-event-collector/types"
+
+	logger "github.com/danielturin/evm-event-collector/logger"
 
 	"github.com/amirylm/lockfree/reactor"
 	"github.com/ethereum/go-ethereum"
@@ -26,7 +28,7 @@ type Subscriber interface {
 	Subscribe(ctx context.Context, reactor reactor.Reactor[types.LogEvent, types.Callback], contractData types.ContractData) error
 }
 
-func New(addr string, timeout time.Duration) *subscriber {
+func New() *subscriber {
 	return &subscriber{
 		log: logger.GetNamedLogger("subscriber"),
 	}
@@ -51,7 +53,7 @@ func (s *subscriber) connect(pctx context.Context, addr string, timeout time.Dur
 	conn, err := ethclient.DialContext(pctx, addr)
 
 	if err != nil {
-		s.log.Error("Connceetion Failure: ", zap.Error(err))
+		s.log.Error("Connection Failure: ", zap.Error(err))
 		return nil, errors.Wrap(err, "connection failure")
 	}
 	return conn, nil

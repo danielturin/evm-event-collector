@@ -5,13 +5,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	logger "evm-event-collector/logger"
-	"evm-event-collector/types"
 	"fmt"
 	"math/big"
 	"os"
 	"strings"
 	"sync"
+
+	logger "github.com/danielturin/evm-event-collector/logger"
+	"github.com/danielturin/evm-event-collector/types"
 
 	"github.com/amirylm/lockfree/core"
 	"github.com/amirylm/lockfree/reactor"
@@ -22,8 +23,8 @@ import (
 
 type Controller interface {
 	Preprocess(e types.LogEvent, contractAbi abi.ABI) *types.Callback
-	Process(c types.Callback)
-	Start(contractDate types.ContractData)
+	Process(c types.Callback, ch chan types.Callback)
+	Start(contractDate types.ContractData, inbound_callbacks chan types.Callback)
 }
 
 type controller struct {
@@ -45,7 +46,7 @@ func New(contractData types.ContractData, reactor reactor.Reactor[types.LogEvent
 	return ctrl
 }
 
-func (ctrl *controller) Start(contractData types.ContractData) {
+func (ctrl *controller) Start(contractData types.ContractData, inbound_callbacks chan types.Callback) {
 	ctrl.log.Info("Iterating over events", zap.Any("events", contractData.Events))
 	for _, event := range contractData.Events {
 		eventAbi := ""
@@ -92,7 +93,7 @@ func (ctrl *controller) Start(contractData types.ContractData) {
 			HandleLogic: func(c reactor.Event[types.Callback]) {
 				ctrl.log.Debug("Callback Process triggered", zap.String("txHash", c.Data.TxHash.Hex()))
 				go func(c reactor.Event[types.Callback]) {
-					ctrl.Process(c.Data)
+					ctrl.Process(c.Data, inbound_callbacks)
 				}(c)
 			},
 		}
@@ -149,19 +150,25 @@ func (ctrl *controller) Preprocess(e types.LogEvent, contractAbi abi.ABI) *types
 			bi_amount := amount[0].(*big.Int)
 			divisor := big.NewInt(1000000)
 			result := new(big.Float).Quo(new(big.Float).SetInt(bi_amount), new(big.Float).SetInt(divisor))
-			cb.Amount = *result
+			cb.Amount = (*result).Text('f', 10)
 		} else {
 			ctrl.log.Warn("error unpacking transfer amount: ", zap.Error(err))
 		}
 
-		ctrl.data_queue.Enqueue(*cb)
+		// ctrl.data_queue.Enqueue(*cb)
 		return cb
 	}
 	ctrl.log.Debug("Preprocess: event is not of type Transfer, ignoring event: ", zap.String("TxHash", e.Log.TxHash.Hex()))
 	return nil
 }
 
-func (ctrl *controller) Process(c types.Callback) {
+func (ctrl *controller) Process(c types.Callback, inbound_callbacks chan types.Callback) {
+	// ctrl.data_queue.Enqueue(c)
+	go func(chan types.Callback) {
+		ctrl.log.Debug("CALLBACK SENT TO CHANNEL: ", zap.Any("Callback", c))
+		inbound_callbacks <- c
+	}(inbound_callbacks)
+	// ctrl.log.Debug("ENQUEUE COMPLETE - new size is: ", zap.Int("Size", ctrl.data_queue.Size()))
 	ctrl.mutext.Lock()
 	filePath := "callbacksData.txt"
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND, 0644)
@@ -189,7 +196,7 @@ func (ctrl *controller) Process(c types.Callback) {
 	fmt.Fprintf(file, "EventSigId: %s\n", hex.EncodeToString(c.EventSigId[:]))
 	fmt.Fprintf(file, "From: %s\n", hex.EncodeToString(c.From[:]))
 	fmt.Fprintf(file, "To: %s\n", hex.EncodeToString(c.To[:]))
-	fmt.Fprintf(file, "Amount: %s\n", c.Amount.Text('f', 10))
+	fmt.Fprintf(file, "Amount: %s\n", c.Amount)
 	fmt.Fprintf(file, "TxHash: %s\n", hex.EncodeToString(c.TxHash[:]))
 	fmt.Fprintf(file, "Addr: %s\n", hex.EncodeToString(c.Addr[:]))
 	fmt.Fprintf(file, "BlockHash: %s\n", hex.EncodeToString(c.BlockHash[:]))
@@ -198,10 +205,6 @@ func (ctrl *controller) Process(c types.Callback) {
 
 	ctrl.log.Debug("Data written to the file successfully.")
 	ctrl.mutext.Unlock()
-}
-
-func (ctrl *controller) GetDataQueue() core.Queue[types.Callback] {
-	return ctrl.data_queue
 }
 
 type ReactiveServiceImpl struct {
